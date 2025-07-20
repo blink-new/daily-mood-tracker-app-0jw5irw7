@@ -71,11 +71,13 @@ export default function Home() {
 
   const loadMoodEntries = async () => {
     try {
+      console.log('Loading mood entries for user:', user.id);
       const entries = await blink.db.mood_entries.list({
         where: { user_id: user.id },
         orderBy: { created_at: 'desc' },
         limit: 7
       });
+      console.log('Loaded entries:', entries.length, entries);
       setMoodEntries(entries);
     } catch (error) {
       console.error('Error loading mood entries:', error);
@@ -128,8 +130,8 @@ export default function Home() {
         created_at: new Date().toISOString()
       });
 
-      // Update local state
-      setMoodEntries(prev => [newEntry, ...prev.slice(0, 6)]);
+      // Reload entries from database to ensure fresh data
+      await loadMoodEntries();
       
       // Reset form
       setSelectedMood(null);
