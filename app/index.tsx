@@ -239,14 +239,14 @@ export default function Home() {
           )}
         </Animated.View>
 
-        {/* Mood Chart */}
+        {/* Mood Chart - Temporarily disabled for debugging */}
         {moodEntries.length > 0 && (
           <Animated.View 
             style={styles.chartCard}
             entering={FadeInUp.duration(600).delay(400)}
           >
             <Text style={styles.cardTitle}>7-Day Mood Trend</Text>
-            <MoodChart data={moodEntries} />
+            <Text style={styles.chartPlaceholder}>Chart coming soon...</Text>
           </Animated.View>
         )}
 
@@ -452,5 +452,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 8,
+  },
+  chartPlaceholder: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 16,
+    fontStyle: 'italic',
+    paddingVertical: 40,
   },
 });

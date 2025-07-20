@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
@@ -40,40 +40,13 @@ export function MoodChart({ data }: MoodChartProps) {
       }
     });
     
-    return {
-      labels: last7Days.map(day => day.label),
-      datasets: [{
-        data: last7Days.map(day => day.score || 3), // Default to neutral if no entry
-        color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-        strokeWidth: 3
-      }]
-    };
+    return last7Days;
   };
 
   const chartData = prepareChartData();
   const chartWidth = width - 80; // Account for padding
-
-  const chartConfig = {
-    backgroundColor: '#FFFFFF',
-    backgroundGradientFrom: '#FFFFFF',
-    backgroundGradientTo: '#FFFFFF',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: '6',
-      strokeWidth: '2',
-      stroke: '#6366F1'
-    },
-    propsForBackgroundLines: {
-      strokeDasharray: '',
-      stroke: '#F3F4F6',
-      strokeWidth: 1
-    }
-  };
+  const chartHeight = 120;
+  const maxScore = 5;
 
   const getMoodEmoji = (score: number) => {
     switch (score) {
@@ -82,13 +55,24 @@ export function MoodChart({ data }: MoodChartProps) {
       case 3: return '😐';
       case 4: return '😊';
       case 5: return '😄';
-      default: return '😐';
+      default: return '⚪';
+    }
+  };
+
+  const getMoodColor = (score: number) => {
+    switch (score) {
+      case 1: return '#EF4444'; // Red
+      case 2: return '#F97316'; // Orange
+      case 3: return '#EAB308'; // Yellow
+      case 4: return '#22C55E'; // Green
+      case 5: return '#10B981'; // Emerald
+      default: return '#E5E7EB'; // Gray
     }
   };
 
   const getAverageScore = () => {
-    const validScores = chartData.datasets[0].data.filter(score => score > 0);
-    if (validScores.length === 0) return 3;
+    const validScores = chartData.filter(day => day.score > 0).map(day => day.score);
+    if (validScores.length === 0) return 0;
     return Math.round(validScores.reduce((sum, score) => sum + score, 0) / validScores.length);
   };
 
@@ -96,30 +80,59 @@ export function MoodChart({ data }: MoodChartProps) {
 
   return (
     <View style={styles.container}>
-      <LineChart
-        data={chartData}
-        width={chartWidth}
-        height={200}
-        chartConfig={chartConfig}
-        bezier
-        style={styles.chart}
-        yAxisInterval={1}
-        fromZero
-        segments={4}
-        yAxisSuffix=""
-        yAxisLabel=""
-        withInnerLines={true}
-        withOuterLines={false}
-        withVerticalLines={false}
-        withHorizontalLines={true}
-      />
+      {/* Custom Bar Chart */}
+      <View style={styles.chartContainer}>
+        <View style={styles.chart}>
+          {chartData.map((day, index) => {
+            const barHeight = day.score > 0 ? (day.score / maxScore) * chartHeight : 8;
+            const color = day.score > 0 ? getMoodColor(day.score) : '#E5E7EB';
+            
+            return (
+              <Animated.View 
+                key={index} 
+                style={styles.barContainer}
+                entering={FadeInUp.duration(600).delay(index * 100)}
+              >
+                {/* Mood emoji above bar */}
+                {day.score > 0 && (
+                  <Text style={styles.barEmoji}>{getMoodEmoji(day.score)}</Text>
+                )}
+                
+                {/* Bar */}
+                <View style={styles.barWrapper}>
+                  <View 
+                    style={[
+                      styles.bar, 
+                      { 
+                        height: barHeight, 
+                        backgroundColor: color,
+                        opacity: day.score > 0 ? 1 : 0.3
+                      }
+                    ]} 
+                  />
+                </View>
+                
+                {/* Day label */}
+                <Text style={styles.dayLabel}>{day.label}</Text>
+              </Animated.View>
+            );
+          })}
+        </View>
+      </View>
       
+      {/* Summary */}
       <View style={styles.summary}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Weekly Average</Text>
           <View style={styles.summaryValue}>
-            <Text style={styles.summaryEmoji}>{getMoodEmoji(averageScore)}</Text>
-            <Text style={styles.summaryScore}>{averageScore}/5</Text>
+            {averageScore > 0 ? (
+              <>
+                <Text style={styles.summaryEmoji}>{getMoodEmoji(averageScore)}</Text>
+                <Text style={styles.summaryScore}>{averageScore}/5</Text>
+              </>
+            ) : (
+              <Text style={styles.summaryScore}>No data</Text>
+            )}
           </View>
         </View>
         
@@ -136,9 +149,44 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
+  chartContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
   chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 160,
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  barContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginHorizontal: 2,
+  },
+  barEmoji: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  barWrapper: {
+    height: 120,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
+  },
+  bar: {
+    width: '80%',
+    borderRadius: 4,
+    minHeight: 8,
+  },
+  dayLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
   },
   summary: {
     flexDirection: 'row',
