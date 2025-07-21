@@ -57,6 +57,7 @@ export default function Home() {
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
+      console.log('Auth state changed:', { user: state.user?.id, isLoading: state.isLoading });
       setUser(state.user);
       setLoading(state.isLoading);
     });
@@ -64,12 +65,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    console.log('User effect triggered:', { userId: user?.id, hasUser: !!user });
+    if (user?.id) {
       loadMoodEntries();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const loadMoodEntries = async () => {
+    if (!user?.id) {
+      console.log('No user ID available, skipping load');
+      return;
+    }
+    
     try {
       console.log('Loading mood entries for user:', user.id);
       const entries = await blink.db.mood_entries.list({
@@ -78,9 +85,10 @@ export default function Home() {
         limit: 7
       });
       console.log('Loaded entries:', entries.length, entries);
-      setMoodEntries(entries);
+      setMoodEntries(entries || []);
     } catch (error) {
       console.error('Error loading mood entries:', error);
+      setMoodEntries([]);
     }
   };
 
@@ -252,14 +260,27 @@ export default function Home() {
           </Animated.View>
         )}
 
+        {/* Debug Info */}
+        <Animated.View 
+          style={styles.quickMoodCard}
+          entering={FadeInUp.duration(600).delay(500)}
+        >
+          <Text style={styles.cardTitle}>Debug Info</Text>
+          <Text style={styles.entryText}>User ID: {user?.id || 'None'}</Text>
+          <Text style={styles.entryText}>Entries Count: {moodEntries.length}</Text>
+          <Text style={styles.entryText}>Loading: {loading ? 'Yes' : 'No'}</Text>
+        </Animated.View>
+
         {/* Recent Entries */}
-        {moodEntries.length > 0 && (
-          <Animated.View 
-            style={styles.entriesCard}
-            entering={FadeInUp.duration(600).delay(600)}
-          >
-            <Text style={styles.cardTitle}>Recent Entries</Text>
-            {moodEntries.slice(0, 3).map((entry, index) => (
+        <Animated.View 
+          style={styles.entriesCard}
+          entering={FadeInUp.duration(600).delay(600)}
+        >
+          <Text style={styles.cardTitle}>Recent Entries ({moodEntries.length})</Text>
+          {moodEntries.length === 0 ? (
+            <Text style={styles.entryText}>No entries yet. Submit your first mood!</Text>
+          ) : (
+            moodEntries.slice(0, 3).map((entry, index) => (
               <View key={entry.id} style={styles.entryItem}>
                 <View style={styles.entryHeader}>
                   <Text style={styles.entryEmoji}>{entry.mood_emoji}</Text>
@@ -276,9 +297,9 @@ export default function Home() {
                   <AIReflection text={entry.ai_reflection} />
                 )}
               </View>
-            ))}
-          </Animated.View>
-        )}
+            ))
+          )}
+        </Animated.View>
       </ScrollView>
 
       {/* Mood Entry Modal */}
